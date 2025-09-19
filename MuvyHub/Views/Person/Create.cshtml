@@ -1,0 +1,74 @@
+﻿@using System.Reflection
+@using System.ComponentModel.DataAnnotations
+@model MuvyHub.Models.Person
+@{
+    var locations = Enum.GetValues(typeof(MuvyHub.Models.Location))
+        .Cast<MuvyHub.Models.Location>()
+        .Select(l => new
+        {
+            Value = l,
+            DisplayName = l.GetType()
+                .GetMember(l.ToString())[0]
+                .GetCustomAttribute<DisplayAttribute>()?.Name ?? l.ToString()
+        })
+        .OrderBy(l => l.DisplayName)
+        .ToList();
+}
+<div class="modal-header">
+    <h5 class="modal-title">Add New Person</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+    <form id="createPersonForm" enctype="multipart/form-data">
+        <div class="mb-3">
+            <label class="form-label">Full Name</label>
+            <input type="text" name="FullName" class="form-control" required />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Date of Birth</label>
+            <input type="date" name="DateOfBirth" class="form-control" required />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">WhatsApp Number</label>
+            <input type="text" name="WhatsappNumber" class="form-control" value="256" required />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Location</label>
+            <select name="Location" class="form-select" required>
+                <option value="" disabled selected>-- Select Location --</option>
+                @foreach (var loc in locations)
+                {
+                    <option value="@loc.Value">@loc.DisplayName</option>
+                }
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Profile Picture</label>
+            <input type="file" name="ProfilePicture" class="form-control" accept="image/*" required />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Other Pictures/Videos</label>
+            <input type="file" name="OtherMedia" multiple class="form-control" accept="image/*,video/*" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea name="Description" class="form-control"></textarea>
+        </div>
+
+        <div class="form-check mb-3">
+            <input type="checkbox" name="IsVerified" class="form-check-input" />
+            <label class="form-check-label">Verified</label>
+        </div>
+
+        <button type="submit" class="btn btn-success">Create</button>
+    </form>
+</div>
+<div class="modal-footer d-sm-none justify-content-center">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+</div>

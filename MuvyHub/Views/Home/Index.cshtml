@@ -1,0 +1,410 @@
+﻿@using Microsoft.AspNetCore.Identity
+@using MuvyHub.Models
+@using PagedList.Core.Mvc
+@inject SignInManager<AppUser> SignInManager
+@model HomeViewModel
+
+@{
+    ViewData["Title"] = "Home Page";
+    bool filtersAreActive = !string.IsNullOrEmpty(Model.SearchQuery) || !string.IsNullOrEmpty(Model.CategoryFilter) || Model.SortBy != "newest";
+}
+
+@if (SignInManager.IsSignedIn(User))
+{
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+             <h1 class="mb-0">All Posts</h1>
+             @if (Model.ExpiryDate.HasValue)
+             {
+                <div id="countdown-wrapper" class="text-end">
+                    <span class="user-home-countdown-label">Premium Expires In:</span>
+                    <div id="countdown" class="user-home-countdown-timer"></div>
+                </div>
+             }
+        </div>
+
+        <div class="filter-controls mb-4">
+            <button class="btn btn-outline-secondary w-100" type="button" data-bs-toggle="collapse" data-bs-target="#filtersCollapse" aria-expanded="@filtersAreActive.ToString().ToLower()" aria-controls="filtersCollapse">
+                <i class="bi bi-sliders me-2"></i> Filter & Sort
+            </button>
+            <div class="collapse @(filtersAreActive ? "show" : "")" id="filtersCollapse">
+                <form asp-action="Index" method="get" class="row g-3 align-items-center mt-2 p-3 bg-dark rounded-3">
+                    <div class="col-md-5">
+                        <input type="text" name="searchQuery" class="form-control" placeholder="Search by title or category..." value="@Model.SearchQuery" />
+                    </div>
+                    <div class="col-md-3">
+                        <select name="categoryFilter" class="form-select" onchange="this.form.submit()">
+                            <option value="">All Categories</option>
+                            @foreach (var option in Model.CategoryFilterOptions) { <option value="@option.Value" selected="@(option.Value == Model.CategoryFilter)">@option.Text</option> }
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                         <select name="sortBy" class="form-select" onchange="this.form.submit()">
+                            @foreach (var option in Model.SortOptions) { <option value="@option.Value" selected="@(option.Value == Model.SortBy)">Sort by: @option.Text</option> }
+                        </select>
+                    </div>
+                    <div class="col-md-1">
+                        <a asp-action="Index" class="btn btn-secondary w-100">Clear</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        @if (Model.AllPosts != null && Model.AllPosts.Any())
+        {
+            var pagedList = Model.AllPosts;
+            int startPage = Math.Max(1, pagedList.PageNumber - 2);
+            int endPage = Math.Min(pagedList.PageCount, pagedList.PageNumber + 2);
+
+            if (endPage - startPage < 4)
+            {
+                if (startPage == 1) endPage = Math.Min(pagedList.PageCount, 5);
+                else startPage = Math.Max(1, pagedList.PageCount - 4);
+            }
+
+            <nav class="">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item @(pagedList.HasPreviousPage ? "" : "disabled")">
+                        <a class="page-link" asp-action="Index" asp-route-page="@(pagedList.PageNumber - 1)" asp-route-searchQuery="@Model.SearchQuery" asp-route-categoryFilter="@Model.CategoryFilter" asp-route-sortBy="@Model.SortBy">&laquo;</a>
+                    </li>
+
+                    @if (startPage > 1)
+                    {
+                        <li class="page-item"><a class="page-link" asp-action="Index" asp-route-page="1" asp-route-searchQuery="@Model.SearchQuery" asp-route-categoryFilter="@Model.CategoryFilter" asp-route-sortBy="@Model.SortBy">1</a></li>
+                        @if (startPage > 2)
+                        {
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        }
+                    }
+
+                    @for (var page = startPage; page <= endPage; page++)
+                    {
+                        <li class="page-item @(page == pagedList.PageNumber ? "active" : "")">
+                            <a class="page-link" asp-action="Index" asp-route-page="@(page)" asp-route-searchQuery="@Model.SearchQuery" asp-route-categoryFilter="@Model.CategoryFilter" asp-route-sortBy="@Model.SortBy">@(page)</a>
+                        </li>
+                    }
+
+                    @if (endPage < pagedList.PageCount)
+                    {
+                        @if (endPage < pagedList.PageCount - 1)
+                        {
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        }
+                        <li class="page-item"><a class="page-link" asp-action="Index" asp-route-page="@pagedList.PageCount" asp-route-searchQuery="@Model.SearchQuery" asp-route-categoryFilter="@Model.CategoryFilter" asp-route-sortBy="@Model.SortBy">@pagedList.PageCount</a></li>
+                    }
+
+                    <li class="page-item @(pagedList.HasNextPage ? "" : "disabled")">
+                        <a class="page-link" asp-action="Index" asp-route-page="@(pagedList.PageNumber + 1)" asp-route-searchQuery="@Model.SearchQuery" asp-route-categoryFilter="@Model.CategoryFilter" asp-route-sortBy="@Model.SortBy">&raquo;</a>
+                    </li>
+                </ul>
+            </nav>
+
+            <div id="posts-container" class="posts-feed-container">
+                @foreach (var post in Model.AllPosts)
+                {
+                    <partial name="_InteractivePostCard" model="post" />
+                }
+            </div>
+            
+
+            <nav class="mt-5">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item @(pagedList.HasPreviousPage ? "" : "disabled")">
+                        <a class="page-link" asp-action="Index" asp-route-page="@(pagedList.PageNumber - 1)" asp-route-searchQuery="@Model.SearchQuery" asp-route-categoryFilter="@Model.CategoryFilter" asp-route-sortBy="@Model.SortBy">&laquo;</a>
+                    </li>
+
+                    @if (startPage > 1)
+                    {
+                        <li class="page-item"><a class="page-link" asp-action="Index" asp-route-page="1" asp-route-searchQuery="@Model.SearchQuery" asp-route-categoryFilter="@Model.CategoryFilter" asp-route-sortBy="@Model.SortBy">1</a></li>
+                        @if (startPage > 2)
+                        {
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        }
+                    }
+
+                    @for (var page = startPage; page <= endPage; page++)
+                    {
+                        <li class="page-item @(page == pagedList.PageNumber ? "active" : "")">
+                           <a class="page-link" asp-action="Index" asp-route-page="@(page)" asp-route-searchQuery="@Model.SearchQuery" asp-route-categoryFilter="@Model.CategoryFilter" asp-route-sortBy="@Model.SortBy">@(page)</a>
+                        </li>
+                    }
+
+                    @if (endPage < pagedList.PageCount)
+                    {
+                        @if (endPage < pagedList.PageCount - 1)
+                        {
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        }
+                        <li class="page-item"><a class="page-link" asp-action="Index" asp-route-page="@pagedList.PageCount" asp-route-searchQuery="@Model.SearchQuery" asp-route-categoryFilter="@Model.CategoryFilter" asp-route-sortBy="@Model.SortBy">@pagedList.PageCount</a></li>
+                    }
+                    
+                    <li class="page-item @(pagedList.HasNextPage ? "" : "disabled")">
+                        <a class="page-link" asp-action="Index" asp-route-page="@(pagedList.PageNumber + 1)" asp-route-searchQuery="@Model.SearchQuery" asp-route-categoryFilter="@Model.CategoryFilter" asp-route-sortBy="@Model.SortBy">&raquo;</a>
+                    </li>
+                </ul>
+            </nav>
+        }
+        else
+        {
+            <div class="text-center p-5"><h4>No posts match your criteria.</h4><p class="text-white-50">Try adjusting your search or filter.</p></div>
+        }
+    </div>
+
+    <div class="modal fade" id="imageGalleryModal" tabindex="-1" aria-labelledby="imageGalleryModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content text-bg-dark border-secondary">
+          <div class="modal-header border-dark">
+            <h5 class="modal-title" id="imageGalleryModalLabel">Image Gallery</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body" id="image-gallery-modal-body"></div>
+        </div>
+      </div>
+    </div>
+
+    @section Scripts {
+        <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+        <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const userCanDownload = @Json.Serialize(Model.CanDownload);
+
+            const countdownElement = document.getElementById("countdown");
+            if (countdownElement && @Json.Serialize(Model.ExpiryDate.HasValue)) {
+                const countDownDate = new Date("@Model.ExpiryDate.Value.ToString("o")").getTime();
+                const x = setInterval(function () {
+                    const now = new Date().getTime();
+                    const distance = countDownDate - now;
+
+                    if (distance < 0) {
+                        clearInterval(x);
+                        countdownElement.innerHTML = "EXPIRED";
+                        countdownElement.classList.add("expired");
+                        return;
+                    }
+                    const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                    countdownElement.innerHTML = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+                }, 1000);
+            }
+
+            const postsContainer = document.getElementById('posts-container');
+            const imageGalleryModalEl = document.getElementById('imageGalleryModal');
+            const imageGalleryModal = new bootstrap.Modal(imageGalleryModalEl);
+            let activePlayer = null;
+            let activeCard = null;
+
+            async function incrementViewCount(wasabiKey) {
+                try {
+                    await fetch('/Premium/IncrementViewCount', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(wasabiKey)
+                    });
+                } catch (error) {
+                    console.error("Failed to increment view count:", error);
+                }
+            }
+
+            function resetCard(card) {
+                if (!card) return;
+                const thumbView = card.querySelector('.thumbnail-view');
+                if(thumbView) thumbView.style.display = 'block';
+                const cardBody = card.querySelector('.card-body');
+                if(cardBody) cardBody.style.visibility = 'visible';
+                const activeView = card.querySelector('.active-view');
+                if(activeView) {
+                    activeView.style.display = 'none';
+                    activeView.innerHTML = '';
+                }
+            }
+
+            postsContainer.addEventListener('click', function(e) {
+                const trigger = e.target.closest('.post-card-trigger');
+                if (!trigger) return;
+
+                const clickedCard = trigger.closest('.interactive-post-card');
+                if (activeCard === clickedCard) return;
+
+                const postType = clickedCard.dataset.postType;
+                const wasabiKey = clickedCard.dataset.wasabiKey;
+
+                incrementViewCount(wasabiKey);
+
+                if (activePlayer) {
+                    activePlayer.destroy();
+                    activePlayer = null;
+                    resetCard(activeCard);
+                }
+
+                activeCard = clickedCard;
+
+                if (postType === 'Video') {
+                    const activeView = activeCard.querySelector('.active-view');
+                    const cardBody = activeCard.querySelector('.card-body');
+
+                    trigger.querySelector('.thumbnail-view').style.display = 'none';
+                    activeView.style.display = 'block';
+                    if(cardBody) cardBody.style.visibility = 'hidden';
+
+                    activeView.innerHTML = '<div class="video-loading-spinner"></div><button class="btn-close btn-close-white close-active-view"></button>';
+
+                    const videoElement = document.createElement('video');
+                    videoElement.innerHTML = `<source src="/Premium/Stream/${encodeURIComponent(wasabiKey)}" type="video/mp4">`;
+                    activeView.appendChild(videoElement);
+
+                    let playerControls = ['play', 'progress', 'current-time', 'mute', 'volume', 'fullscreen'];
+                    if (userCanDownload) {
+                        playerControls.push('download');
+                    }
+
+                    activePlayer = new Plyr(videoElement, {
+                        controls: playerControls,
+                        urls: {
+                            download: `/Premium/Download?videoKey=${encodeURIComponent(wasabiKey)}`
+                        },
+                        autoplay: true
+                    });
+
+                    activePlayer.on('playing', event => {
+                        const spinner = activeView.querySelector('.video-loading-spinner');
+                        if (spinner) spinner.style.display = 'none';
+                    });
+
+                    activePlayer.on('error', event => {
+                        const spinner = activeView.querySelector('.video-loading-spinner');
+                        if (spinner) spinner.style.display = 'none';
+                    });
+
+                    activeView.querySelector('.close-active-view').addEventListener('click', (ev) => {
+                        ev.stopPropagation();
+                        if (activePlayer) { activePlayer.destroy(); activePlayer = null; }
+                        resetCard(activeCard);
+                        activeCard = null;
+                    });
+                } else if (postType === 'Image') {
+                        imageGalleryModal.show(trigger);
+                        activeCard = null;
+                }
+            });
+
+            imageGalleryModalEl.addEventListener('show.bs.modal', function (event) {
+                    const trigger = event.relatedTarget;
+                    const card = trigger.closest('.interactive-post-card');
+                    const imageUrls = JSON.parse(card.dataset.imageUrls);
+                    const postTitle = card.dataset.postTitle;
+                    const modalBody = imageGalleryModalEl.querySelector('.modal-body');
+
+                    imageGalleryModalEl.querySelector('.modal-title').textContent = postTitle;
+
+                    modalBody.innerHTML = '<div class="video-loading-spinner" style="position: relative; margin: 3rem auto;"></div>';
+
+                    const imagePromises = imageUrls.map(url => {
+                        return new Promise((resolve, reject) => {
+                            const img = new Image();
+                            img.src = url;
+                            img.className = 'd-block w-100 rounded mb-3';
+                            img.onload = () => resolve(img);
+                            img.onerror = () => reject(new Error(`Failed to load image: ${url}`));
+                        });
+                    });
+
+                    Promise.all(imagePromises)
+                        .then(images => {
+                            modalBody.innerHTML = '';
+                            images.forEach(img => {
+                                modalBody.appendChild(img);
+                            });
+                        })
+                        .catch(error => {
+                            console.error(error);
+                            modalBody.innerHTML = '<div class="alert alert-danger">Could not load one or more images.</div>';
+                        });
+                });
+        });
+    </script>
+    }
+}
+else
+{
+    <div class="homepage-wrapper">
+        <div class="muvy-home-carousel-wrapper">
+            <div class="muvy-home-overlay"></div>
+        </div>
+
+        <div class="muvy-home-content container-fluid">
+            <h1 class="display-3 fw-bold">Unlimited movies, TV shows, and more.</h1>
+            <p class="lead mb-4">Watch anywhere. Cancel anytime.</p>
+
+            <div class="text-center">
+                <p>Contact us via WhatsApp to get your premium account today.</p>
+                <a href="https://wa.me/256XXXXX=Hey%2C%20I'm%20interested%20in%20paying%20for%20NexTube%20Premium%20Updates." target="_blank" class="btn btn-lg btn-success mt-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-whatsapp me-2" viewBox="0 0 16 16">
+                        <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232z" />
+                    </svg>
+                    Subscribe on WhatsApp
+                </a>
+            </div>
+        </div>
+
+        <div class="container-fluid mt-5 px-4">
+            <h2 class="mb-4">Latest Uploads</h2>
+            @if (Model.LatestPremiumVideos.Any())
+            {
+                <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5 g-4">
+                    @foreach (var video in Model.LatestPremiumVideos)
+                    {
+                        <div class="col" style="background: rgba(108, 108, 108, 0.18);padding: 10px;border-radius: 10px;">
+                            <div class="video-grid-item">
+                                <a href="#" class="video-grid-link" data-bs-toggle="modal" data-bs-target="#subscribeModal">
+                                    <div class="video-grid-thumbnail-wrapper">
+                                        <img src="@(video.ThumbnailUrl ?? "https://placehold.co/1920x1080/282828/FFFFFF?text=No+Thumbnail")" alt="@video.Title thumbnail">
+                                        <span class="video-duration-overlay">
+                                            @if (video.Duration.TotalHours >= 1)
+                                            {
+                                                @video.Duration.ToString(@"h\:mm\:ss")
+                                            }
+                                            else
+                                            {
+                                                @video.Duration.ToString(@"mm\:ss")
+                                            }
+                                        </span>
+                                        <div class="video-grid-overlay">
+                                            <div class="video-grid-play-icon">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" class="bi bi-play-circle-fill" viewBox="0 0 16 16">
+                                                    <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM6.79 5.093A.5.5 0 0 0 6 5.5v5a.5.5 0 0 0 .79.407l3.5-2.5a.5.5 0 0 0 0-.814l-3.5-2.5z" />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="video-grid-info" style="">
+                                        <h6 class="video-grid-title text-truncate">@video.Title</h6>
+                                        @if (video.Description != null)
+                                        {
+                                            <hr class="card-footer-hr">
+                                            <div class="card-description-bg pt-2 ps-3" style="background: rgba(108, 108, 108, 0.06);border-radius: 12px;">
+                                                @video.Description
+                                            </div>
+                                        }
+                                        <div class="video-grid-meta">
+                                            <span>@video.ViewCount.ToString("N0") views</span>
+                                            <span>•</span>
+                                            <span>@video.LastModified.ToString("MMM dd, yyyy")</span>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="text-white-50">No new uploads at the moment. Check back soon!</p>
+            }
+        </div>
+    </div>
+
+}

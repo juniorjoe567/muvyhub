@@ -1,0 +1,419 @@
+﻿@using System.Reflection
+@using System.ComponentModel.DataAnnotations
+@using MuvyHub.Helpers
+@model PagedList.Core.IPagedList<MuvyHub.Models.Person>
+@{
+    ViewData["Title"] = "People";
+}
+@{
+    var locations = Enum.GetValues(typeof(MuvyHub.Models.Location))
+        .Cast<MuvyHub.Models.Location>()
+        .Select(l => new
+        {
+            Value = l,
+            DisplayName = l.GetType()
+                .GetMember(l.ToString())[0]
+                .GetCustomAttribute<DisplayAttribute>()?.Name ?? l.ToString()
+        })
+        .OrderBy(l => l.DisplayName)
+        .ToList();
+}
+<style>
+    .filter-section {
+        padding: 1.5rem 0;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        color: #fff;
+    }
+
+        .filter-section .form-select {
+            max-width: 200px;
+        }
+
+    .netflix-grid {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    }
+
+    .netflix-card {
+        background-color: #181818;
+        border-radius: 8px;
+        overflow: hidden;
+        position: relative;
+        cursor: pointer;
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+
+        .netflix-card:hover {
+            transform: translateY(-5px);
+            z-index: 10;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .netflix-card img {
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+        }
+
+    .netflix-card-body {
+        padding: 1rem;
+    }
+
+        .netflix-card-body h5 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+            color: #fff;
+        }
+
+        .netflix-card-body .text-muted {
+            font-size: 0.875rem;
+        }
+
+        .netflix-card-body .action-buttons {
+            margin-top: 1rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+    @@media (max-width: 576px) {
+        .netflix-grid
+
+    {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+    }
+
+    .netflix-card img {
+        height: 250px;
+    }
+
+    .netflix-card-body h5 {
+        font-size: 1rem;
+    }
+
+    }
+</style>
+
+@if (User.IsInRole("Admin"))
+{
+    <div class="mb-4 text-end">
+        <button type="button" class="btn btn-success" id="createPersonBtn">+ Add Person</button>
+    </div>
+}
+
+<div class="container-fluid">
+    <form method="get" class="row mb-4">
+        <div class="col-md-4 mb-2">
+            <input type="text" name="search" class="form-control" placeholder="Search by name..." value="@ViewBag.SearchQuery" />
+        </div>
+        <div class="col-md-2 mb-2">
+            <select name="location" class="form-select">
+                <option value="">All Locations</option>
+                @foreach (var location in locations)
+                {
+                    <option value="@location.Value"
+                            selected="@(ViewBag.Location?.ToString() == location.Value.ToString())">
+                        @location.DisplayName
+                    </option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100">Filter</button>
+        </div>
+    </form>
+
+    <div class="netflix-grid">
+        @foreach (var person in Model)
+        {
+            <div class="netflix-card" data-id="@person.Id">
+                <a asp-controller="Person" asp-action="Details" asp-route-id="@person.Id">
+                    <img src="@person.ProfilePicturePath" alt="@person.FullName" />
+                </a>
+
+                <div class="netflix-card-body">
+                    <h5>
+                        @person.FullName
+                        @if (person.IsVerified)
+                        {
+                            <span class="badge bg-success">Verified</span>
+                        }
+                    </h5>
+                    <div class="text-muted">@ViewHelper.GetDisplayName(person.Location)</div>
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <div class="action-buttons">
+                            <button type="button" class="btn btn-sm btn-outline-warning edit-person" data-id="@person.Id">Edit</button>
+                            <button type="button" class="btn btn-sm btn-outline-danger delete-person" data-id="@person.Id">Delete</button>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@{
+    var pagedList = Model;
+    int startPage = Math.Max(1, pagedList.PageNumber - 2);
+    int endPage = Math.Min(pagedList.PageCount, pagedList.PageNumber + 2);
+
+    if (endPage - startPage < 4)
+    {
+        if (startPage == 1)
+            endPage = Math.Min(pagedList.PageCount, 5);
+        else
+            startPage = Math.Max(1, pagedList.PageCount - 4);
+    }
+}
+
+<nav class="mt-5">
+    <ul class="pagination justify-content-center">
+        <li class="page-item @(pagedList.HasPreviousPage ? "" : "disabled")">
+            <a class="page-link"
+               asp-action="Index"
+               asp-route-page="@(pagedList.PageNumber - 1)"
+               asp-route-search="@ViewBag.SearchQuery"
+               asp-route-verified="@ViewBag.Verified">
+                &laquo;
+            </a>
+        </li>
+
+        @if (startPage > 1)
+        {
+            <li class="page-item">
+                <a class="page-link"
+                   asp-action="Index"
+                   asp-route-page="1"
+                   asp-route-search="@ViewBag.SearchQuery"
+                   asp-route-verified="@ViewBag.Verified">
+                    1
+                </a>
+            </li>
+            @if (startPage > 2)
+            {
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+            }
+        }
+
+        @for (var page = startPage; page <= endPage; page++)
+        {
+            <li class="page-item @(page == pagedList.PageNumber ? "active" : "")">
+                <a class="page-link"
+                   asp-action="Index"
+                   asp-route-page="@(page)"
+                   asp-route-search="@ViewBag.SearchQuery"
+                   asp-route-verified="@ViewBag.Verified">
+                    @(page)
+                </a>
+            </li>
+        }
+
+        @if (endPage < pagedList.PageCount)
+        {
+            @if (endPage < pagedList.PageCount - 1)
+            {
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+            }
+            <li class="page-item">
+                <a class="page-link"
+                   asp-action="Index"
+                   asp-route-page="@pagedList.PageCount"
+                   asp-route-search="@ViewBag.SearchQuery"
+                   asp-route-verified="@ViewBag.Verified">
+                    @pagedList.PageCount
+                </a>
+            </li>
+        }
+
+        <li class="page-item @(pagedList.HasNextPage ? "" : "disabled")">
+            <a class="page-link"
+               asp-action="Index"
+               asp-route-page="@(pagedList.PageNumber + 1)"
+               asp-route-search="@ViewBag.SearchQuery"
+               asp-route-verified="@ViewBag.Verified">
+                &raquo;
+            </a>
+        </li>
+    </ul>
+</nav>
+
+
+<div class="modal fade" id="personModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content d-flex flex-column" id="modalContentWrapper">
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="imageModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="true" data-bs-keyboard="true">
+    <div class="modal-dialog modal-dialog-centered modal-fullscreen-md-down">
+        <div class="modal-content bg-transparent border-0 text-center">
+            <div class="modal-header border-0 pb-0">
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0 d-flex align-items-center justify-content-center">
+                <button id="prevImageBtn" class="image-nav-btn image-nav-btn-left">&lt;</button>
+                <img id="popupImage" src="" alt="Full-size image" class="img-fluid" style="max-height: 90vh; max-width: 90vw; object-fit: contain;" />
+                <button id="nextImageBtn" class="image-nav-btn image-nav-btn-right">&gt;</button>
+                <div id="imageCounter" class="image-counter d-none">1 / 1</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
+
+    <script>
+        var galleryImages = [];
+        var currentImageIndex = 0;
+
+        function loadModal(url) {
+            $.get(url, function(data) {
+                $('#modalContentWrapper').html(data);
+                var modal = new bootstrap.Modal(document.getElementById('personModal'));
+                modal.show();
+            });
+        }
+
+        function showImageInPopout(index) {
+            if (index >= 0 && index < galleryImages.length) {
+                currentImageIndex = index;
+                $('#popupImage').attr('src', galleryImages[currentImageIndex]);
+
+                if (galleryImages.length > 1) {
+                    $('#imageCounter').text((currentImageIndex + 1) + ' / ' + galleryImages.length).removeClass('d-none');
+                } else {
+                    $('#imageCounter').addClass('d-none');
+                }
+
+                $('#prevImageBtn').prop('disabled', currentImageIndex === 0);
+                $('#nextImageBtn').prop('disabled', currentImageIndex === galleryImages.length - 1);
+            }
+        }
+
+        $(document).ready(function() {
+            $(document).on('click', '.view-details-image, .view-details', function() {
+                var id = $(this).data('id');
+                loadModal('/Person/DetailsPartial/' + id);
+            });
+
+            $(document).on('click', '.edit-person', function() {
+                var id = $(this).data('id');
+                loadModal('/Person/EditPartial/' + id);
+            });
+
+            $(document).on('click', '.delete-person', function() {
+                var id = $(this).data('id');
+                loadModal('/Person/DeletePartial/' + id);
+            });
+
+            $('#createPersonBtn').click(function() {
+                loadModal('/Person/CreatePartial');
+            });
+
+            $(document).on('submit', '#editPersonForm', function(e) {
+                e.preventDefault();
+                var formData = new FormData(this);
+                
+                formData.set('IsVerified', $('input[name="IsVerified"]').is(':checked'));
+
+
+                $.ajax({
+                    url: '/Person/Edit/' + formData.get('Id'),
+                    type: 'POST',
+                    data: formData,
+                    contentType: false,
+                    processData: false,
+                    success: function() {
+                        location.reload();
+                    },
+                    error: function(xhr) {
+                        alert('Update failed: ' + xhr.responseText);
+                    }
+                });
+            });
+
+            $(document).on('click', '#confirmDeleteBtn', function() {
+                var id = $(this).data('id');
+                $.post('/Person/DeleteConfirmed/' + id, function() {
+                    location.reload();
+                });
+            });
+
+            $(document).on('submit', '#createPersonForm', function(e) {
+                e.preventDefault();
+                var formData = new FormData(this);
+                formData.set('IsVerified', $('input[name="IsVerified"]').is(':checked'));
+
+                $.ajax({
+                    url: '/Person/Create',
+                    type: 'POST',
+                    data: formData,
+                    contentType: false,
+                    processData: false,
+                    success: function() {
+                        location.reload();
+                    },
+                    error: function(xhr) {
+                        alert('Create failed: ' + xhr.responseText);
+                    }
+                });
+            });
+
+            $(document).on('click', '.popup-trigger', function() {
+                galleryImages = $('.popup-trigger').map(function() {
+                    return $(this).data('img-src');
+                }).get();
+
+                var clickedImageUrl = $(this).data('img-src');
+                var clickedImageIndex = galleryImages.indexOf(clickedImageUrl);
+
+                showImageInPopout(clickedImageIndex);
+
+                var imageModal = new bootstrap.Modal(document.getElementById('imageModal'));
+                imageModal.show();
+            });
+
+            $('#prevImageBtn').click(function() {
+                showImageInPopout(currentImageIndex - 1);
+            });
+
+            $('#nextImageBtn').click(function() {
+                showImageInPopout(currentImageIndex + 1);
+            });
+
+            var imageModalEl = document.getElementById('imageModal');
+            if (imageModalEl) {
+                var mc = new Hammer(imageModalEl);
+                mc.on('swipeleft', function(e) {
+                    $('#nextImageBtn').trigger('click');
+                });
+                mc.on('swiperight', function(e) {
+                    $('#prevImageBtn').trigger('click');
+                });
+            }
+        });
+    </script>
+
+    <script>
+        $(document).ready(function () {
+            $('#locationFilter').change(function () {
+                var selectedLocation = $(this).val();
+
+                $('.netflix-card').hide();
+
+                if (selectedLocation) {
+                    $('.netflix-card .text-muted:contains("' + selectedLocation + '")').closest('.netflix-card').show();
+                } else {
+                    $('.netflix-card').show();
+                }
+            });
+        });
+    </script>
+}

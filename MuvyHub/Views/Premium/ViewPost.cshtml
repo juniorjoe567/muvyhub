@@ -1,0 +1,131 @@
+﻿@model MuvyHub.Models.ViewPostViewModel
+@{
+    ViewData["Title"] = Model.Post.Title;
+}
+
+@if (Model.Post.PostType == "Video")
+{
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+}
+
+<div class="container-fluid mt-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Home</a></li>
+            <li class="breadcrumb-item"><a asp-controller="Premium" asp-action="ViewCategory" asp-route-category="@Model.Post.WasabiKey.Split('/')[0]">@Model.Post.WasabiKey.Split('/')[0]</a></li>
+            <li class="breadcrumb-item active" aria-current="page">@Model.Post.Title</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-lg-8">
+            @if (Model.Post.PostType == "Video")
+            {
+                <div class="player-container mb-3">
+                    <video id="player" playsinline controls preload="metadata">
+                        <source src="/Premium/Stream/@System.Net.WebUtility.UrlEncode(Model.Post.WasabiKey)" type="video/mp4" />
+                    </video>
+                    <div class="watermark">MUVYHUB PREMIUM</div>
+                </div>
+            }
+            else if (Model.Post.PostType == "Image")
+            {
+                <div id="imagePostCarousel" class="carousel slide" data-bs-ride="carousel">
+                    <div class="carousel-indicators">
+                        @for (int i = 0; i < Model.Post.ImageUrls.Count; i++)
+                        {
+                            <button type="button" data-bs-target="#imagePostCarousel" data-bs-slide-to="@i" class="@(i == 0 ? "active" : "")" aria-current="true" aria-label="Slide @(i + 1)"></button>
+                        }
+                    </div>
+                    <div class="carousel-inner image-gallery-container">
+                        @for (int i = 0; i < Model.Post.ImageUrls.Count; i++)
+                        {
+                            <div class="carousel-item @(i == 0 ? "active" : "")">
+                                <img src="@Model.Post.ImageUrls[i]" class="d-block w-100" alt="Image @(i+1)">
+                            </div>
+                        }
+                    </div>
+                    <button class="carousel-control-prev" type="button" data-bs-target="#imagePostCarousel" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Previous</span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#imagePostCarousel" data-bs-slide="next">
+                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Next</span>
+                    </button>
+                </div>
+            }
+
+            <h1 class="post-title">@Model.Post.Title</h1>
+            @if (!string.IsNullOrEmpty(Model.Post.Description))
+            {
+                <p class="post-description">@Model.Post.Description</p>
+            }
+        </div>
+
+        <div class="col-lg-4">
+            @if (Model.RelatedPosts.Any())
+            {
+                <div class="play-page-sidebar">
+                    <h4 class="sidebar-title">Up Next</h4>
+                    <div class="sidebar-video-list">
+                        @foreach (var post in Model.RelatedPosts)
+                        {
+                            <a asp-action="ViewPost" asp-route-wasabiKey="@post.WasabiKey" class="sidebar-video-item">
+                                <div class="sidebar-thumbnail">
+                                    <img src="@(post.ThumbnailUrl ?? "https://placehold.co/1280x720/282828/FFFFFF?text=No+Thumb")" alt="@post.Title" />
+                                </div>
+                                <div class="sidebar-video-info">
+                                    <span class="sidebar-video-title">@post.Title</span>
+                                    <span class="sidebar-video-meta">@post.LastModified.ToString("MMM dd, yyyy")</span>
+                                </div>
+                            </a>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+    @if (Model.Post.PostType == "Video")
+    {
+        <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const canDownload = @Json.Serialize(Model.CanDownload);
+                const downloadUrl = `/Premium/Download?videoKey=${encodeURIComponent('@Model.Post.WasabiKey')}`;
+
+                let playerControls = [
+                    'play-large', 'play', 'progress', 'current-time', 'mute',
+                    'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'
+                ];
+
+                if (canDownload && downloadUrl) {
+                    playerControls.push('download');
+                }
+
+                const player = new Plyr('#player', {
+                    controls: playerControls,
+                    urls: {
+                        download: downloadUrl
+                    }
+                });
+
+                player.source = {
+                    type: 'video',
+                    sources: [
+                        {
+                            src: '/Premium/Stream/@System.Net.WebUtility.UrlEncode(Model.Post.WasabiKey)',
+                            type: 'video/mp4',
+                        }
+                    ]
+                };
+
+              player.elements.container.addEventListener('contextmenu', e => e.preventDefault());
+            });
+        </script>
+    }
+}

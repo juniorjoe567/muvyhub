@@ -1,0 +1,192 @@
+﻿@model MuvyHub.Models.ManageUsersViewModel
+@using PagedList.Core
+
+@{
+    ViewData["Title"] = "Manage Users";
+    var pagedList = Model.Users;
+    int startPage = Math.Max(1, pagedList.PageNumber - 2);
+    int endPage = Math.Min(pagedList.PageCount, pagedList.PageNumber + 2);
+
+    if (endPage - startPage < 4)
+    {
+        if (startPage == 1)
+            endPage = Math.Min(pagedList.PageCount, 5);
+        else
+            startPage = Math.Max(1, pagedList.PageCount - 4);
+    }
+}
+
+<div class="container mt-5">
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
+        <h1 class="mb-0">@ViewData["Title"]</h1>
+        <div class="d-flex flex-wrap gap-2">
+            <a asp-action="CreateUser" class="btn btn-spotify d-flex align-items-center gap-1">
+                <i class="bi bi-person-plus-fill"></i> Create User
+            </a>
+            <a asp-action="Upload" class="btn btn-outline-light d-flex align-items-center gap-1">
+                <i class="bi bi-upload"></i> Upload Video
+            </a>
+            <a asp-action="Uploads" class="btn btn-outline-info d-flex align-items-center gap-1">
+                <i class="bi bi-card-list"></i> View Uploads
+            </a>
+        </div>
+    </div>
+
+    <form method="get" class="row g-2 mb-4">
+        <div class="col-12 col-md-4">
+            <input type="search" name="searchQuery" value="@Model.SearchQuery" class="form-control" placeholder="Search by email..." aria-label="Search by email" />
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary w-100">Search</button>
+        </div>
+    </form>
+
+    @if (TempData["UploadSuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["UploadSuccessMessage"]
+            <a asp-controller="Premium" asp-action="ViewCategory" asp-route-category="@TempData["UploadedCategory"]" class="alert-link">View the category now.</a>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (pagedList != null && pagedList.Any())
+    {
+        <div class="table-responsive">
+            <table class="table table-dark table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th scope="col">#</th>
+                        <th scope="col">Email</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Can Download</th>
+                        <th scope="col">Expiry Date</th>
+                        <th scope="col" class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (var i = 0; i < pagedList.Count; i++)
+                    {
+                        var user = pagedList[i];
+                        <tr>
+                            <td>@((pagedList.PageNumber - 1) * pagedList.PageSize + i + 1)</td>
+                            <td>@user.Email</td>
+                            <td>
+                                @if (user.IsActive && user.ExpiryDate > DateTime.UtcNow)
+                                {
+                                    <span class="badge bg-success">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger">Inactive/Expired</span>
+                                }
+                            </td>
+                            <td>
+                                @if (user.CanDownload)
+                                {
+                                    <span class="badge bg-info">Yes</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">No</span>
+                                }
+                            </td>
+                            <td>@(user.ExpiryDate?.ToString("yyyy-MM-dd HH:mm") ?? "N/A")</td>
+                            <td class="text-end">
+                                <div class="btn-group flex-wrap" role="group" aria-label="User actions">
+                                    @if (user.IsActive && user.ExpiryDate > DateTime.UtcNow)
+                                    {
+                                        <form asp-action="DeactivateUser" asp-route-id="@user.Id" method="post" class="d-inline me-1 mb-1">
+                                            <button type="submit" class="btn btn-warning btn-sm" title="Deactivate User">Deactivate</button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form asp-action="ActivateUser" asp-route-id="@user.Id" method="post" class="d-inline me-1 mb-1">
+                                            <button type="submit" class="btn btn-success btn-sm" title="Activate User & Add 30 Days">Activate</button>
+                                        </form>
+                                    }
+
+                                    <form asp-action="UpdateExpiry" asp-route-id="@user.Id" asp-route-days="30" method="post" class="d-inline me-1 mb-1">
+                                        <button type="submit" class="btn btn-info btn-sm" title="Add 30 Days">+30d</button>
+                                    </form>
+                                    <form asp-action="UpdateExpiry" asp-route-id="@user.Id" asp-route-days="15" method="post" class="d-inline me-1 mb-1">
+                                        <button type="submit" class="btn btn-info btn-sm" title="Add 15 Days">+15d</button>
+                                    </form>
+                                    <form asp-action="UpdateExpiry" asp-route-id="@user.Id" asp-route-days="-30" method="post" class="d-inline me-1 mb-1">
+                                        <button type="submit" class="btn btn-secondary btn-sm" title="Subtract 30 Days">-30d</button>
+                                    </form>
+                                    <form asp-action="ToggleDownloadPermission" asp-route-id="@user.Id" method="post" class="d-inline me-1 mb-1">
+                                        <button type="submit" class="btn btn-sm @(user.CanDownload ? "btn-outline-warning" : "btn-outline-info")" title="Toggle Download Permission">
+                                            <i class="bi bi-download"></i> Toggle
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <nav aria-label="User pagination" class="mt-4">
+            <ul class="pagination justify-content-center flex-wrap gap-1">
+                <li class="page-item @(pagedList.HasPreviousPage ? "" : "disabled")">
+                    <a class="page-link"
+                       asp-action="ManageUsers"
+                       asp-route-page="@(pagedList.PageNumber - 1)"
+                       asp-route-searchQuery="@Model.SearchQuery"
+                       aria-label="Previous page">&laquo;</a>
+                </li>
+
+                @if (startPage > 1)
+                {
+                    <li class="page-item">
+                        <a class="page-link" asp-action="ManageUsers" asp-route-page="1" asp-route-searchQuery="@Model.SearchQuery">1</a>
+                    </li>
+                    @if (startPage > 2)
+                    {
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                    }
+                }
+
+                @for (var page = startPage; page <= endPage; page++)
+                {
+                    <li class="page-item @(page == pagedList.PageNumber ? "active" : "")">
+                        <a class="page-link"
+                           asp-action="ManageUsers"
+                           asp-route-page="@(page)"
+                           asp-route-searchQuery="@Model.SearchQuery"
+                           aria-current="@(page == pagedList.PageNumber ? "page" : null)">
+                            @(page)
+                        </a>
+                    </li>
+                }
+
+                @if (endPage < pagedList.PageCount)
+                {
+                    @if (endPage < pagedList.PageCount - 1)
+                    {
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                    }
+                    <li class="page-item">
+                        <a class="page-link" asp-action="ManageUsers" asp-route-page="@pagedList.PageCount" asp-route-searchQuery="@Model.SearchQuery">@pagedList.PageCount</a>
+                    </li>
+                }
+
+                <li class="page-item @(pagedList.HasNextPage ? "" : "disabled")">
+                    <a class="page-link"
+                       asp-action="ManageUsers"
+                       asp-route-page="@(pagedList.PageNumber + 1)"
+                       asp-route-searchQuery="@Model.SearchQuery"
+                       aria-label="Next page">&raquo;</a>
+                </li>
+            </ul>
+        </nav>
+    }
+    else
+    {
+        <div class="alert alert-secondary">No users found.</div>
+    }
+</div>

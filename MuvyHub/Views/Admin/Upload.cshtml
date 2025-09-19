@@ -1,0 +1,199 @@
+﻿@model MuvyHub.Models.UploadViewModel
+@{
+    ViewData["Title"] = "Create Post";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="mb-0">@ViewData["Title"]</h1>
+                <a asp-action="Uploads" class="btn btn-sm btn-outline-secondary">View Upload Queue</a>
+            </div>
+
+            <div class="card text-bg-dark border-secondary">
+                <div class="card-body p-4">
+                    <form id="uploadForm" asp-action="Upload" method="post" enctype="multipart/form-data">
+                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
+
+                        <div class="mb-3">
+                            <label asp-for="SelectedCategory" class="form-label"></label>
+                            <select asp-for="SelectedCategory" asp-items="@(new SelectList(Model.Categories))" class="form-select" required>
+                                <option value="">Select a Category</option>
+                            </select>
+                            <span asp-validation-for="SelectedCategory" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="PostType" class="form-label"></label>
+                            <div class="d-flex gap-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" asp-for="PostType" value="Video" id="postTypeVideo" checked>
+                                    <label class="form-check-label" for="postTypeVideo">Video Post</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" asp-for="PostType" value="Image" id="postTypeImage">
+                                    <label class="form-check-label" for="postTypeImage">Image Gallery Post</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Description" class="form-label"></label>
+                            <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                        </div>
+
+                        <div id="video-input-group" class="mb-3">
+                            <label asp-for="Video" class="form-label"></label>
+                            <input asp-for="Video" type="file" class="form-control" accept=".mp4">
+                            <span asp-validation-for="Video" class="text-danger"></span>
+                        </div>
+
+                        <div id="image-input-group" class="mb-3" style="display:none;">
+                            <label asp-for="Images" class="form-label"></label>
+                            <input asp-for="Images" type="file" class="form-control" accept=".jpg, .jpeg, .png" multiple>
+                            <span asp-validation-for="Images" class="text-danger"></span>
+                        </div>
+
+                        <div id="upload-progress-container" class="mt-4" style="display: none;">
+                            <div class="progress" role="progressbar" aria-label="Upload progress" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                                <div id="upload-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-netflix" style="width: 0%">0%</div>
+                            </div>
+                            <div id="upload-status" class="text-center text-white-50 mt-2"></div>
+                        </div>
+
+                        <div id="upload-result" class="mt-3"></div>
+
+                        <div class="d-grid mt-4">
+                            <button id="upload-button" type="submit" class="btn btn-lg btn-netflix">Queue Upload</button>
+                            <button id="upload-another-button" type="button" class="btn btn-lg btn-outline-light" style="display: none;">Upload Another File</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const postTypeRadios = document.querySelectorAll('input[name="PostType"]');
+            const videoInputGroup = document.getElementById('video-input-group');
+            const imageInputGroup = document.getElementById('image-input-group');
+            const videoInput = document.querySelector('input[name="Video"]');
+            const imagesInput = document.querySelector('input[name="Images"]');
+
+            function toggleInputs() {
+                if (document.getElementById('postTypeVideo').checked) {
+                    videoInputGroup.style.display = 'block';
+                    videoInput.required = true;
+                    imageInputGroup.style.display = 'none';
+                    imagesInput.required = false;
+                } else {
+                    videoInputGroup.style.display = 'none';
+                    videoInput.required = false;
+                    imageInputGroup.style.display = 'block';
+                    imagesInput.required = true;
+                }
+            }
+
+            postTypeRadios.forEach(radio => radio.addEventListener('change', toggleInputs));
+            toggleInputs();
+
+            const form = document.getElementById('uploadForm');
+            const uploadButton = document.getElementById('upload-button');
+            const uploadAnotherButton = document.getElementById('upload-another-button');
+            const progressContainer = document.getElementById('upload-progress-container');
+            const progressBar = document.getElementById('upload-progress-bar');
+            const statusDiv = document.getElementById('upload-status');
+            const resultDiv = document.getElementById('upload-result');
+
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+
+                resultDiv.innerHTML = '';
+                progressContainer.style.display = 'block';
+                statusDiv.innerText = 'Starting upload...';
+                uploadButton.disabled = true;
+                uploadButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Initializing...';
+
+                const formData = new FormData(form);
+                const xhr = new XMLHttpRequest();
+
+                xhr.open('POST', form.action, true);
+                const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+                xhr.setRequestHeader('RequestVerificationToken', token);
+
+                xhr.upload.onprogress = function (event) {
+                    if (event.lengthComputable) {
+                        const percentComplete = Math.round((event.loaded / event.total) * 100);
+                        progressBar.style.width = percentComplete + '%';
+                        progressBar.innerText = percentComplete + '%';
+
+                        if (percentComplete < 100) {
+                            statusDiv.innerText = `Uploading to server... (${(event.loaded / 1048576).toFixed(2)} MB of ${(event.total / 1048576).toFixed(2)} MB)`;
+                            uploadButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Uploading...';
+                        } else {
+                            statusDiv.innerText = 'Upload complete. Queuing background job...';
+                            uploadButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+                        }
+                    }
+                };
+
+                xhr.onload = function () {
+                    progressBar.classList.remove('progress-bar-animated');
+                    if (xhr.status === 200) {
+                        const response = JSON.parse(xhr.responseText);
+                        if(response.success) {
+                             statusDiv.innerText = 'File successfully queued!';
+                             progressBar.classList.remove('bg-netflix');
+                             progressBar.classList.add('bg-success');
+                             resultDiv.innerHTML = `<div class="alert alert-success mt-3">${response.message} <a href="${response.viewUrl}" target="_blank" class="alert-link">Track its progress here.</a></div>`;
+                             uploadButton.style.display = 'none';
+                             uploadAnotherButton.style.display = 'block';
+                        } else {
+                            statusDiv.innerText = 'Upload failed.';
+                            progressBar.classList.remove('bg-netflix');
+                            progressBar.classList.add('bg-danger');
+                            resultDiv.innerHTML = `<div class="alert alert-danger mt-3">${response.message}</div>`;
+                            uploadButton.disabled = false;
+                            uploadButton.innerHTML = 'Queue Upload';
+                        }
+                    } else {
+                        statusDiv.innerText = 'An error occurred during upload.';
+                        progressBar.classList.remove('bg-netflix');
+                        progressBar.classList.add('bg-danger');
+                        resultDiv.innerHTML = `<div class="alert alert-danger mt-3">Error: ${xhr.statusText}</div>`;
+                        uploadButton.disabled = false;
+                        uploadButton.innerHTML = 'Queue Upload';
+                    }
+                };
+
+                xhr.onerror = function () {
+                     resultDiv.innerHTML = `<div class="alert alert-danger mt-3">An error occurred. Please check your connection and try again.</div>`;
+                     uploadButton.disabled = false;
+                     uploadButton.innerHTML = 'Queue Upload';
+                };
+
+                xhr.send(formData);
+            });
+
+            uploadAnotherButton.addEventListener('click', function() {
+                form.reset();
+                progressContainer.style.display = 'none';
+                progressBar.style.width = '0%';
+                progressBar.innerText = '0%';
+                progressBar.classList.remove('bg-success', 'bg-danger');
+                progressBar.classList.add('bg-netflix', 'progress-bar-animated');
+                statusDiv.innerText = '';
+                resultDiv.innerHTML = '';
+                uploadAnotherButton.style.display = 'none';
+                uploadButton.style.display = 'block';
+                uploadButton.disabled = false;
+                uploadButton.innerHTML = 'Queue Upload';
+            });
+        });
+    </script>
+}

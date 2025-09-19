@@ -1,0 +1,62 @@
+﻿@model MuvyHub.Models.PlayViewModel
+@{
+    ViewData["Title"] = Model.CurrentVideoTitle;
+}
+
+<link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+
+<div class="container-fluid mt-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Home</a></li>
+            <li class="breadcrumb-item"><a asp-controller="Premium" asp-action="ViewCategory" asp-route-category="@Model.Category">@Model.Category</a></li>
+            <li class="breadcrumb-item active" aria-current="page">@Model.CurrentVideoTitle</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="player-container mb-3">
+                <video id="player" playsinline controls preload="metadata">
+                    <source src="/Premium/Stream/@System.Net.WebUtility.UrlEncode(Model.CurrentVideoKey)" type="video/mp4" />
+                    <p>Your browser doesn't support HTML5 video. Here is a <a href="/Premium/Stream/@System.Net.WebUtility.UrlEncode(Model.CurrentVideoKey)">link to the video</a> instead.</p>
+                </video>
+                <div class="watermark">MUVYHUB PREMIUM</div>
+            </div>
+            <h1 class="video-title">@Model.CurrentVideoTitle</h1>
+        </div>
+
+        <div class="col-lg-4">
+            @if (Model.RelatedVideos.Any())
+            {
+                <div class="play-page-sidebar">
+                    <h4 class="sidebar-title">Up Next</h4>
+                    <div class="sidebar-video-list">
+                        @foreach (var video in Model.RelatedVideos)
+                        {
+                            <a asp-action="Play" asp-route-videoKey="@video.VideoKey" asp-route-category="@Model.Category" class="sidebar-video-item">
+                                <div class="sidebar-thumbnail">
+                                    <img src="@(video.ThumbnailUrl ?? "https://placehold.co/1280x720/282828/FFFFFF?text=No+Thumb")" alt="@video.Title" />
+                                </div>
+                                <div class="sidebar-video-info">
+                                    <span class="sidebar-video-title">@video.Title</span>
+                                    <span class="sidebar-video-meta">@video.LastModified.ToString("MMM dd, yyyy")</span>
+                                </div>
+                            </a>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const player = new Plyr('#player');
+            player.elements.container.addEventListener('contextmenu', e => e.preventDefault());
+        });
+    </script>
+}

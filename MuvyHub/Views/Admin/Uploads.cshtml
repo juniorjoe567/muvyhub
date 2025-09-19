@@ -1,0 +1,133 @@
+﻿@using MuvyHub.Models
+@using PagedList.Core
+@model IPagedList<UploadJob>
+@{
+    ViewData["Title"] = "Upload Queue";
+}
+
+<div class="container mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0">@ViewData["Title"]</h1>
+        <a asp-action="Upload" class="btn btn-spotify">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-upload me-1" viewBox="0 0 16 16">
+              <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"/>
+              <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708z"/>
+            </svg>
+            Upload New Video
+        </a>
+    </div>
+
+    @if(Model.Any())
+    {
+        <div class="table-responsive">
+            <table class="table table-dark table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>File Name</th>
+                        <th>Status & Progress</th>
+                        <th>Queued At</th>
+                        <th class="text-end">Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (var i = 0; i < Model.Count; i++)
+                    {
+                        var job = Model[i];
+                        <tr id="job-row-@job.HangfireJobId">
+                            <td>@((Model.PageNumber - 1) * Model.PageSize + i + 1)</td>
+                            <td>@job.OriginalFileName</td>
+                            <td>
+                                <div id="job-status-@job.HangfireJobId" class="mb-1">
+                                    @if (job.Status == "Completed") { <span class="badge bg-success">@job.Status</span> }
+                                    else if (job.Status == "Failed") { <span class="badge bg-danger" title="@job.ErrorMessage">@job.Status</span> }
+                                    else { <span class="badge bg-info">@job.Status</span> }
+                                </div>
+                                <div class="progress" style="height: 10px; display: none;" id="progress-container-@job.HangfireJobId">
+                                    <div class="progress-bar bg-spotify-green" id="progress-bar-@job.HangfireJobId" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                            </td>
+                            <td>@job.StartTime.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                            <td class="text-end">
+                                <a href="/hangfire/jobs/details/@job.HangfireJobId" target="_blank" class="btn btn-sm btn-outline-secondary">View Job</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <nav aria-label="Uploads pagination" class="mt-4">
+            <ul class="pagination justify-content-center">
+                <li class="page-item @(Model.HasPreviousPage ? "" : "disabled")">
+                    <a class="page-link" asp-action="Uploads" asp-route-page="@(Model.PageNumber - 1)">&laquo;</a>
+                </li>
+
+                @for (var page = 1; page <= Model.PageCount; page++)
+                {
+                    <li class="page-item @(page == Model.PageNumber ? "active" : "")">
+                        <a class="page-link" asp-action="Uploads" asp-route-page="@(page)">@(page)</a>
+                    </li>
+                }
+
+                <li class="page-item @(Model.HasNextPage ? "" : "disabled")">
+                    <a class="page-link" asp-action="Uploads" asp-route-page="@(Model.PageNumber + 1)">&raquo;</a>
+                </li>
+            </ul>
+        </nav>
+    }
+    else
+    {
+         <div class="alert alert-secondary">No upload jobs found.</div>
+    }
+</div>
+
+@section Scripts {
+    <script src="~/lib/signalr/signalr.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const connection = new signalR.HubConnectionBuilder()
+                .withUrl("/progressHub")
+                .configureLogging(signalR.LogLevel.Information)
+                .build();
+
+            async function start() {
+                try {
+                    await connection.start();
+                    console.log("SignalR Connected.");
+                    await connection.invoke("JoinAdminGroup");
+                } catch (err) {
+                    console.error(err);
+                    setTimeout(start, 5000);
+                }
+            };
+
+            connection.onclose(async () => {
+                await start();
+            });
+
+            connection.on("ReceiveProgress", (jobId, status, percentage, errorMessage) => {
+                const statusElement = document.getElementById(`job-status-${jobId}`);
+                const progressContainer = document.getElementById(`progress-container-${jobId}`);
+                const progressBar = document.getElementById(`progress-bar-${jobId}`);
+
+                if (!statusElement || !progressContainer || !progressBar) return;
+
+                let badgeClass = 'bg-info';
+                if (status === 'Completed') badgeClass = 'bg-success';
+                if (status === 'Failed') badgeClass = 'bg-danger';
+                statusElement.innerHTML = `<span class="badge ${badgeClass}" title="${errorMessage || ''}">${status}</span>`;
+                
+                if (status === 'Uploading Thumbnail' || status === 'Uploading Video' || status === 'Processing') {
+                    progressContainer.style.display = 'flex';
+                    progressBar.style.width = percentage + '%';
+                    progressBar.setAttribute('aria-valuenow', percentage);
+                } else {
+                    progressContainer.style.display = 'none';
+                }
+            });
+
+            start();
+        });
+    </script>
+}

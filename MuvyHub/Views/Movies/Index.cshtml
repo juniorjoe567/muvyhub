@@ -1,0 +1,108 @@
+﻿@model MuvyHub.Models.MoviesViewModel
+@{
+    ViewData["Title"] = "Movies & TV Shows";
+}
+<form class="d-flex pt-3" role="search" onsubmit="return false;">
+    <input id="searchInput" class="form-control me-2 text-white rounded-pill" type="search" placeholder="What do you want to watch?" aria-label="Search" autocomplete="off">
+</form>
+
+
+<div id="search-results-container" class="container-fluid mt-4" style="display: none;">
+</div>
+
+<div id="default-movies">
+    @if (Model != null)
+    {
+        <div class="container-fluid mt-4">
+            <partial name="_ScrollableRow" model='("Popular Movies", Model.PopularMovies)' />
+            <partial name="_ScrollableRow" model='("Top Rated Movies", Model.TopRatedMovies)' />
+            <partial name="_ScrollableRow" model='("Popular TV Shows", Model.PopularTvShows)' />
+            <partial name="_ScrollableRow" model='("Top Rated TV Shows", Model.TopRatedTvShows)' />
+        </div>
+    }
+    else
+    {
+        <div class="text-center text-light mt-5">
+            <h2>Could not load content.</h2>
+            <p class="text-white-50">There was an issue fetching the movies and TV shows. Please try again later.</p>
+        </div>
+    }
+
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.scroll-wrapper').forEach(wrapper => {
+                const container = wrapper.querySelector('.scroll-row-container');
+                const leftArrow = wrapper.querySelector('.left-arrow');
+                const rightArrow = wrapper.querySelector('.right-arrow');
+
+                const updateArrows = () => {
+                    if (!container) return;
+                    const maxScrollLeft = container.scrollWidth - container.clientWidth;
+                    leftArrow.style.display = container.scrollLeft > 10 ? 'flex' : 'none';
+                    rightArrow.style.display = container.scrollLeft < maxScrollLeft - 10 ? 'flex' : 'none';
+                };
+
+                leftArrow.addEventListener('click', () => {
+                    container.scrollBy({ left: -container.clientWidth * 0.8, behavior: 'smooth' });
+                });
+
+                rightArrow.addEventListener('click', () => {
+                    container.scrollBy({ left: container.clientWidth * 0.8, behavior: 'smooth' });
+                });
+
+                container.addEventListener('scroll', updateArrows);
+                setTimeout(updateArrows, 500);
+
+                let isDown = false;
+                let isDragging = false;
+                let startX;
+                let scrollLeft;
+
+                const startDrag = (e) => {
+                    isDown = true;
+                    isDragging = false;
+                    container.classList.add('active');
+                    startX = e.pageX - container.offsetLeft;
+                    scrollLeft = container.scrollLeft;
+                };
+
+                const endDrag = (e) => {
+                    if (!isDown) return;
+                    isDown = false;
+                    container.classList.remove('active');
+                    setTimeout(() => {
+                        isDragging = false;
+                    }, 0);
+                };
+
+                const doDrag = (e) => {
+                    if (!isDown) return;
+                    e.preventDefault();
+                    const x = e.pageX - container.offsetLeft;
+                    const walk = x - startX;
+                    if (Math.abs(walk) > 5) {
+                        isDragging = true;
+                    }
+                    if (isDragging) {
+                        container.scrollLeft = scrollLeft - walk;
+                    }
+                };
+
+                container.addEventListener('mousedown', startDrag);
+                container.addEventListener('mousemove', doDrag);
+                window.addEventListener('mouseup', endDrag);
+
+                wrapper.querySelectorAll('a.card-link').forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        if (isDragging) {
+                            e.preventDefault();
+                        }
+                    });
+                });
+            });
+        });
+    </script>
+}

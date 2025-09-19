@@ -1,0 +1,12 @@
+﻿@{
+    ViewData["Title"] = "Access Denied";
+}
+
+<div class="text-center mt-5">
+    <h1 class="text-danger">@ViewData["Title"]</h1>
+    <h2 class="text-white-50">You do not have permission to view this resource.</h2>
+    <p class="mt-4">
+        Your subscription may be inactive or expired. Please contact support if you believe this is an error.
+    </p>
+    <a asp-controller="Home" asp-action="Index" class="btn btn-primary mt-3">Go to Home</a>
+</div>

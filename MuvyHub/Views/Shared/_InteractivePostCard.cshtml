@@ -1,0 +1,74 @@
+﻿<div class="card interactive-post-card text-bg-dark h-100"
+     data-post-type="@Model.PostType"
+     data-wasabi-key="@Model.WasabiKey"
+     data-image-urls="@(Model.PostType == "Image" ? System.Text.Json.JsonSerializer.Serialize(Model.ImageUrls) : "")"
+     data-post-title="@Model.Title">
+
+    <div class="card-media-wrapper">
+        <div class="post-card-trigger" style="cursor: pointer;">
+            <div class="thumbnail-view">
+                <img src="@(Model.ThumbnailUrl ?? "https://placehold.co/1920x1080/282828/FFFFFF?text=No+Thumbnail")" class="card-img-top" alt="@Model.Title thumbnail">
+
+                <span class="video-duration-overlay">
+                    @if (Model.PostType == "Video")
+                    {
+                        if (Model.Duration.TotalHours >= 1)
+                        {
+                            @Model.Duration.ToString(@"h\:mm\:ss")
+                        }
+                        else
+                        {
+                            @Model.Duration.ToString(@"mm\:ss")
+                        }
+                    }
+                    else
+                    {
+                        <i class="bi bi-images me-1"></i> 
+                        @Model.ImageUrls.Count
+                    }
+                </span>
+
+                <div class="thumbnail-overlay">
+                    <div class="thumbnail-play-icon">
+                        @if (Model.PostType == "Video")
+                        {
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-play-circle-fill" viewBox="0 0 16 16">
+                                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM6.271 5.055a.5.5 0 0 0-.771.424v5.042a.5.5 0 0 0 .771.424l4.5-2.521a.5.5 0 0 0 0-.848l-4.5-2.521z" />
+                            </svg>
+
+                        }
+                        else
+                        {
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-images me-1" viewBox="0 0 16 16">
+                                <path d="M4.502 9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" />
+                                <path d="M14.002 13a2 2 0 0 1-2 2h-10a2 2 0 0 1-2-2V5A2 2 0 0 1 2 3a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-1zM2 2a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1H2z" />
+                                <path d="M10.648 8.447a.5.5 0 0 1 .577-.093l4.777 3.947V15a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1v-2.5l3.248-3.248a.5.5 0 0 1 .707 0l2.5 2.5.577-.477z" />
+                            </svg>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="active-view" style="display: none;"></div>
+        </div>
+
+        <div class="card-body">
+            <div class="post-card-meta">
+                <a asp-controller="Premium" asp-action="ViewCategory" asp-route-category="@Model.Category" class="badge bg-secondary text-decoration-none me-2">@Model.Category</a>
+                <span class="view-count">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-fill me-1" viewBox="0 0 16 16">
+                        <path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z" />
+                        <path d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8zm8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z" />
+                    </svg> @Model.ViewCount.ToString("N0")
+                </span>
+                <span class="ms-auto">@Model.LastModified.ToString("d MMM yyyy")</span>
+            </div>
+        </div>
+    </div>
+
+    @if(Model.Description != null)
+    {
+        <hr class="card-footer-hr">
+        <div class="card-description-bg pt-2 ps-3">@Model.Description</div>
+    }
+</div>
+

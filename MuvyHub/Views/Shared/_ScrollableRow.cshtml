@@ -1,0 +1,26 @@
+﻿@model (string Title, List<MuvyHub.Models.TmdbResult> Items)
+
+<div class="scroll-wrapper">
+    <h2 class="text-light row-title">@Model.Title</h2>
+
+    <button class="scroll-arrow left-arrow" style="display: none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-chevron-left" viewBox="0 0 16 16">
+            <path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z" />
+        </svg>
+    </button>
+
+    <div class="scroll-row-container">
+        <div class="scroll-row">
+            @foreach (var item in Model.Items)
+            {
+                <partial name="_MediaCard" model="item" />
+            }
+        </div>
+    </div>
+
+    <button class="scroll-arrow right-arrow">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16">
+            <path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z" />
+        </svg>
+    </button>
+</div>

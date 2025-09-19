@@ -1,0 +1,169 @@
+﻿@using MuvyHub.Models
+@using PagedList.Core
+@model ViewCategoryViewModel
+@{
+    ViewData["Title"] = Model.Category;
+}
+
+<div class="container-fluid mt-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Home</a></li>
+            <li class="breadcrumb-item active" aria-current="page">@Model.Category</li>
+        </ol>
+    </nav>
+
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+    }
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex align-items-center">
+            <h1 class="mb-0">@Model.Category</h1>
+            <span class="category-video-count">@Model.Posts.TotalItemCount posts</span>
+        </div>
+
+        <form asp-action="ViewCategory" method="get" class="d-flex align-items-center gap-2">
+            <input type="hidden" name="category" value="@Model.Category" />
+            <label for="sortBy" class="form-label mb-0 me-2">Sort by:</label>
+            <select name="sortBy" id="sortBy" class="form-select form-select-sm" onchange="this.form.submit()">
+                @foreach (var option in Model.SortOptions)
+                {
+                    <option value="@option.Value" selected="@(option.Value == Model.SortBy)">@option.Text</option>
+                }
+            </select>
+        </form>
+    </div>
+
+
+    @if (Model.Posts.Any())
+    {
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5 g-4">
+            @foreach (var post in Model.Posts)
+            {
+                <div class="col">
+                    <div class="video-grid-item">
+                        <div style="position: relative;">
+
+
+                            <div class="video-grid-thumbnail-wrapper">
+                                <img src="@(post.ThumbnailUrl ?? "https://placehold.co/1920x1080/282828/FFFFFF?text=No+Thumb")" alt="@post.Title thumbnail">
+                                <span class="video-duration-overlay">
+                                    @if (post.PostType == "Video")
+                                    {
+                                        if (post.Duration.TotalHours >= 1)
+                                        {
+                                            @post.Duration.ToString(@"h\:mm\:ss")
+                                        }
+                                        else
+                                        {
+                                            @post.Duration.ToString(@"mm\:ss")
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-images me-1"></i> 
+                                        @post.ImageUrls.Count
+                                    }
+                                </span>
+                                <div class="video-grid-overlay">
+                                    <div class="video-grid-play-icon">
+                                        @if (post.PostType == "Video")
+                                        {
+                                            <i class="bi bi-play-circle-fill"></i>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-images"></i>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="video-grid-info">
+                                <h6 class="video-grid-title text-truncate">@post.Title</h6>
+                                <div class="video-grid-meta">
+                                    <span class="view-count">
+                                        <i class="bi bi-eye-fill me-1"></i> @post.ViewCount.ToString("N0")
+                                    </span>
+                                    <span>•</span>
+                                    <span>@post.LastModified.ToString("MMM dd, yyyy")</span>
+                                </div>
+                                @if (User.IsInRole("Admin"))
+                                {
+                                    <form asp-controller="Admin" asp-action="DeletePost" asp-route-wasabiKey="@post.WasabiKey" method="post" onsubmit="return confirm('Are you sure you want to permanently delete this post?');" class="post-delete-form">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-danger btn-sm post-delete-button" title="Delete Post">
+                                            <i class="bi bi-trash3-fill"></i> Delete
+                                        </button>
+                                    </form>
+                                }
+                            </div>
+
+
+                            
+                        </div>
+
+                    </div>
+                </div>
+            }
+        </div>
+
+        var pagedList = Model.Posts;
+        int startPage = Math.Max(1, pagedList.PageNumber - 2);
+        int endPage = Math.Min(pagedList.PageCount, pagedList.PageNumber + 2);
+
+        if (endPage - startPage < 4)
+        {
+            if (startPage == 1) endPage = Math.Min(pagedList.PageCount, 5);
+            else startPage = Math.Max(1, pagedList.PageCount - 4);
+        }
+
+        <nav class="mt-4">
+            <ul class="pagination justify-content-center">
+                <li class="page-item @(pagedList.HasPreviousPage ? "" : "disabled")">
+                    <a class="page-link" asp-action="ViewCategory" asp-route-category="@Model.Category" asp-route-page="@(pagedList.PageNumber - 1)" asp-route-sortBy="@Model.SortBy">&laquo;</a>
+                </li>
+
+                @if (startPage > 1)
+                {
+                    <li class="page-item"><a class="page-link" asp-action="ViewCategory" asp-route-category="@Model.Category" asp-route-page="1" asp-route-sortBy="@Model.SortBy">1</a></li>
+                    @if (startPage > 2)
+                    {
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                    }
+                }
+
+                @for (var page = startPage; page <= endPage; page++)
+                {
+                    <li class="page-item @(page == pagedList.PageNumber ? "active" : "")">
+                        <a class="page-link" asp-action="ViewCategory" asp-route-category="@Model.Category" " asp-route-page="@(page)" asp-route-sortBy="@Model.SortBy">@(page)</a>
+                    </li>
+                }
+
+                @if (endPage < pagedList.PageCount)
+                {
+                    @if (endPage < pagedList.PageCount - 1)
+                    {
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                    }
+                    <li class="page-item"><a class="page-link" asp-action="ViewCategory" asp-route-category="@Model.Category" asp-route-page="@pagedList.PageCount" asp-route-sortBy="@Model.SortBy">@pagedList.PageCount</a></li>
+                }
+
+                <li class="page-item @(pagedList.HasNextPage ? "" : "disabled")">
+                    <a class="page-link" asp-action="ViewCategory" asp-route-category="@Model.Category" asp-route-page="@(pagedList.PageNumber + 1)" asp-route-sortBy="@Model.SortBy">&raquo;</a>
+                </li>
+            </ul>
+        </nav>
+    }
+    else
+    {
+        <div class="alert alert-secondary" role="alert">
+          No posts found in this category.
+        </div>
+    }
+</div>
